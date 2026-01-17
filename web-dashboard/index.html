@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Aggregator Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #fafafa;
+            --card: #ffffff;
+            --border: #eaeaea;
+
+            --info: #e8f1ff;
+            --error: #ffecec;
+            --warn: #fff4e5;
+            --debug: #f3f3f3;
+
+            --text-primary: #111;
+            --text-secondary: #555;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        }
+
+        .log-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .log-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .log-info {
+            background: var(--info);
+        }
+
+        .log-error {
+            background: var(--error);
+        }
+
+        .log-warn {
+            background: var(--warn);
+        }
+
+        .log-debug {
+            background: var(--debug);
+        }
+
+        .metadata-badge {
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            color: var(--text-secondary);
+        }
+
+        .highlight {
+            background: #fff2a8;
+            border-radius: 4px;
+            padding: 0 2px;
+        }
+
+        #searchInput {
+            max-width: 360px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+        }
+
+        .stat-card {
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: var(--card);
+        }
+
+        .toast-container {
+            z-index: 9999;
+        }
+    </style>
+
+</head>
+
+<body>
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-stream"></i> Log Aggregator Dashboard
+            </a>
+            <div class="text-white">
+                <span id="lastUpdate">--:--:--</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Stats Cards -->
+        <div class="row mb-4" id="statsRow">
+            <div class="col-md-3">
+                <div class="card stat-card bg-primary text-white">
+                    <div class="card-body">
+                        <h5><i class="fas fa-info-circle"></i> INFO</h5>
+                        <h2 id="infoCount">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card bg-warning text-white">
+                    <div class="card-body">
+                        <h5><i class="fas fa-exclamation-triangle"></i> WARN</h5>
+                        <h2 id="warnCount">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card bg-danger text-white">
+                    <div class="card-body">
+                        <h5><i class="fas fa-exclamation-circle"></i> ERROR</h5>
+                        <h2 id="errorCount">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stat-card bg-secondary text-white">
+                    <div class="card-body">
+                        <h5><i class="fas fa-bug"></i> DEBUG</h5>
+                        <h2 id="debugCount">0</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search & Controls -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="searchInput" placeholder="Search logs..."
+                                onkeypress="if(event.key==='Enter') searchLogs()">
+                            <button class="btn btn-primary" onclick="searchLogs()">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="clearSearch()">
+                                <i class="fas fa-times"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="btn-group float-end">
+                            <button class="btn btn-outline-primary" onclick="loadAllLogs()">
+                                <i class="fas fa-sync"></i> Refresh All
+                            </button>
+                            <button class="btn btn-outline-info" onclick="refreshStats()">
+                                <i class="fas fa-chart-bar"></i> Refresh Stats
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <label class="form-label">Level</label>
+                        <select class="form-select" id="levelFilter">
+                            <option value="">All Levels</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARN">WARN</option>
+                            <option value="ERROR">ERROR</option>
+                            <option value="DEBUG">DEBUG</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <label class="form-label">Source</label>
+                        <select class="form-select" id="sourceFilter">
+                            <option value="">All Sources</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <label class="form-label">Results</label>
+                        <input type="number" class="form-control" id="limitInput" value="20" min="1" max="100">
+                    </div>
+                    <div class="col-md-4 mb-2 d-flex align-items-end">
+                        <button class="btn btn-outline-success w-100" onclick="searchLogs()">
+                            <i class="fas fa-filter"></i> Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Logs Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Recent Logs</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Level</th>
+                                <th>Source</th>
+                                <th>Message</th>
+                                <th>Trace ID</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logsTableBody">
+                            <!-- Logs will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-outline-primary" onclick="loadMoreLogs()">
+                        <i class="fas fa-plus"></i> Load More
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Log Details -->
+    <div class="modal fade" id="logModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Log Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <pre id="logDetails" class="p-3 bg-light rounded"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+
+</html>
