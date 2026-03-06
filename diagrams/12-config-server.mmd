@@ -1,0 +1,29 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — What I'd Still Add #3, Spring Cloud Config Server
+%% Centralising configuration so all services pull from one place instead of duplicating values
+
+flowchart TB
+
+    subgraph WITHOUT_CS["WITHOUT Config Server — duplicated configuration"]
+        direction TB
+        F1["service-a / application.properties\n────────────────────────────────\ndb.password=postgres\neureka.client.serviceUrl=http://localhost:8761/eureka/\nspring.datasource.url=jdbc:postgresql://localhost:5432/log_aggregator"]
+        F2["service-b / application.properties\n────────────────────────────────\ndb.password=postgres\neureka.client.serviceUrl=http://localhost:8761/eureka/\nspring.datasource.url=jdbc:postgresql://localhost:5432/log_query_db"]
+        PROB_CS["Change DB password:\n→ Update 2 files\n→ Restart 2 services\n\nAdd a new service:\n→ Copy-paste config, introduce drift\n\nRotate a secret:\n→ Find every file that has it"]
+        F1 --> PROB_CS
+        F2 --> PROB_CS
+    end
+
+    subgraph WITH_CS["WITH Config Server — single source of truth"]
+        direction TB
+        CS_REPO["config-server backed by Git repo\nconfig / application.properties\n────────────────────────────────\ndb.password=postgres\neureka.client.serviceUrl=http://localhost:8761/eureka/\n\n(service-specific overrides in per-service files)"]
+
+        SA["service-a\n(pulls config on startup\nor on /actuator/refresh)"]
+        SB["service-b\n(pulls config on startup\nor on /actuator/refresh)"]
+
+        CS_REPO -- "serves config" --> SA
+        CS_REPO -- "serves config" --> SB
+
+        SOL_CS["Change DB password:\n→ Update 1 file in Git\n→ Push\n→ All services refresh without redeployment\n\nEncrypt secrets — Spring Cloud Config supports\nencrypted values in config files\n\nAudit trail — config changes tracked in Git history"]
+        CS_REPO --> SOL_CS
+    end
+
+    WITHOUT_CS --> WITH_CS

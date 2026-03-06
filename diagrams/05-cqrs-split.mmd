@@ -1,0 +1,34 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — Design Decision 2, [SHOW DIAGRAM: CQRS Split]
+%% Why two separate databases — Command Query Responsibility Segregation (simplified)
+
+flowchart TB
+
+    subgraph PROBLEM["THE PROBLEM with one shared database"]
+        direction LR
+        WRITE_NEED["INSERT 1000 logs/sec\n━━━━━━━━━━━━━━━━━━━━\nNeeds:\n• Fast writes\n• Minimal overhead\n• Append-only pattern"]
+        READ_NEED["search 'payment failed'\n━━━━━━━━━━━━━━━━━━━━\nNeeds:\n• Indexes on multiple columns\n• Complex WHERE + ORDER BY\n• Schema optimized for filtering"]
+        CONFLICT["These have OPPOSITE needs.\nIndexes that help reads slow down writes.\nYou are making a compromise no matter what."]
+        WRITE_NEED --- CONFLICT
+        READ_NEED  --- CONFLICT
+    end
+
+    subgraph SOLUTION["THE SOLUTION — two databases, each optimized for its job"]
+        direction LR
+
+        subgraph WRITE_PATH["WRITE PATH"]
+            DB_RAW[("log_aggregator DB\nraw_logs table\n─────────────────────\nid\nsource_app\nlevel\nmessage\ntrace_id\nmetadata  ← JSONB\ntimestamp\n─────────────────────\nOptimized for:\n✓ Fast inserts\n✓ Minimal overhead\n✓ Append-only\n✓ Log never lost")]
+        end
+
+        subgraph READ_PATH["READ PATH"]
+            DB_IDX[("log_query_db\nindexed_logs table\n─────────────────────\nid\nsource_app\nlevel\nmessage\ntrace_id\nmetadata  ← JSONB\ntimestamp\n+ searchable_text ◀──┐\n─────────────────────\nOptimized for:\n✓ ILIKE text search\n✓ Filter by level\n✓ Sort by timestamp")]
+        end
+
+        ST_BUILD["searchable_text is built at index time:\n'payment-service error payment failed userid=42: timeout'\n(source_app + level + message — lowercased, concatenated)\n\nDifferent shape of the same data,\noptimized for a different access pattern."]
+
+        DB_IDX --> ST_BUILD
+    end
+
+    TRADEOFF["Tradeoff: eventual consistency.\nThere is a window between ingest and indexing.\nFor a logging tool, that is totally acceptable."]
+
+    PROBLEM    --> SOLUTION
+    SOLUTION   --> TRADEOFF

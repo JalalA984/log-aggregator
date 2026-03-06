@@ -1,0 +1,22 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — What I'd Still Add #2, [SHOW DIAGRAM: Message Queue vs Direct HTTP]
+%% Current fragile direct HTTP call vs proposed durable message queue between ingest and indexing
+
+flowchart TB
+
+    subgraph DIRECT["CURRENT — Direct HTTP call  (fragile)"]
+        direction LR
+        I1["Ingest Service"] -- "POST /query/index" --> Q1["Query Service"]
+        Q1 --> DOWN1["If Query Service is down or slow:\n✗ indexing call FAILS immediately\n✗ no retry mechanism\n✗ indexing is LOST — log never appears in search\n✗ no backpressure — burst can overwhelm query service\n✗ caller waits on network timeout"]
+    end
+
+    subgraph QUEUE_PROP["PROPOSED — Message Queue  (durable, decoupled)"]
+        direction LR
+        I2["Ingest Service"] -- "publish message\n(fire and forget)" --> MQ["Message Queue\nRabbitMQ or Kafka\n\nMessages persist here\nuntil consumed"]
+        MQ -- "consume when ready\n(at own pace)" --> Q2["Query Service"]
+        MQ --> UP1["If Query Service is down:\n✓ messages queue up safely in the broker\n✓ automatic retry with configurable backoff\n✓ dead-letter queue — failed messages captured\n  for manual inspection and replay\n✓ burst absorption — queue buffers sudden\n  spikes without overwhelming the consumer\n✓ ordering guarantees (Kafka — per partition)"]
+    end
+
+    NOTE_WHY["Why RabbitMQ vs Kafka?\nRabbitMQ — simpler, great for task queues, built-in DLQ, easier ops.\nKafka — needed when you want replay, ordering guarantees, or\nhigh-throughput event streaming with multiple consumer groups."]
+
+    DIRECT      --> QUEUE_PROP
+    QUEUE_PROP  --> NOTE_WHY

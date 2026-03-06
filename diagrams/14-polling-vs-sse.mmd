@@ -1,0 +1,34 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — What I'd Still Add #7, Real-time log streaming
+%% Current polling approach vs proposed persistent SSE or WebSocket push
+
+flowchart TB
+
+    subgraph POLLING["POLLING  (current implementation)"]
+        direction LR
+        D_POLL["Dashboard\n:3000"]
+        API_POLL["API Gateway\n:8080"]
+
+        D_POLL -- "GET /query/stats\n(every 30 seconds)" --> API_POLL
+        API_POLL -- "response" --> D_POLL
+        D_POLL -- "GET /query/stats\n(again, 30s later)" --> API_POLL
+        API_POLL -- "response" --> D_POLL
+        D_POLL -- "GET /query/stats\n(...)" --> API_POLL
+        API_POLL -- "response" --> D_POLL
+
+        POLL_PROB["Problems:\n• Up to 30s lag before new logs appear\n• Unnecessary requests when nothing changed\n• Dashboard feels static, not live"]
+    end
+
+    subgraph SSE_WS["SSE / WebSocket  (proposed)"]
+        direction LR
+        D_SSE["Dashboard\n:3000"]
+        API_SSE["API Gateway / Query Service\n:8080"]
+
+        D_SSE -- "connect\n(one persistent connection)" --> API_SSE
+        API_SSE -- "push: new log arrived" --> D_SSE
+        API_SSE -- "push: new log arrived" --> D_SSE
+        API_SSE -- "push: new log arrived" --> D_SSE
+
+        SSE_NOTE["Benefits:\n• Logs appear in dashboard as they arrive\n• No polling overhead\n• Server controls push cadence\n\nSSE — simpler, HTTP/1.1 compatible, one direction (server→client)\nWebSocket — bidirectional, needed if dashboard sends commands back"]
+    end
+
+    POLLING --> SSE_WS

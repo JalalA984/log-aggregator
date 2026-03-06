@@ -1,0 +1,44 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — Part 2, [SHOW DIAGRAM: Full System Architecture]
+%% Complete system with all services, databases, and relationships
+
+flowchart TB
+    subgraph CLIENTS["SIMULATORS / ANY APP / curl\nanything that wants to send logs into the system"]
+        WEB_SIM["web-app-simulator\n:9001\n(POST fake logs every 10s)"]
+        PAY_SIM["payment-simulator\n:9002\n(POST fake logs every 20s\n+ batch bursts)"]
+        CURL["curl / any HTTP client"]
+    end
+
+    subgraph GW_BOX["API GATEWAY  :8080\nThe single front door — all traffic enters here"]
+        R_INGEST["/ingest/**  ──────────────▶  LOG-INGEST-SERVICE"]
+        R_QUERY["/query/**   ──────────────▶  LOG-QUERY-SERVICE"]
+    end
+
+    subgraph INGEST_BOX["LOG-INGEST-SERVICE  :8090"]
+        INGEST_LABEL["Write path\nReceives logs, validates,\nstores raw data"]
+    end
+
+    subgraph QUERY_BOX["LOG-QUERY-SERVICE  :8091"]
+        QUERY_LABEL["Read path\nIndexes logs,\nhandles search and stats"]
+    end
+
+    DB_RAW[("PostgreSQL\nlog_aggregator\nraw_logs")]
+    DB_IDX[("PostgreSQL\nlog_query_db\nindexed_logs")]
+
+    subgraph EUREKA_BOX["SERVICE REGISTRY  :8761\nEureka — all services register here\nso they can find each other"]
+        EUREKA_LABEL["Phone book of running services\nGateway looks up service names\ninstead of hardcoded ports"]
+    end
+
+    subgraph DASH_BOX["WEB DASHBOARD  :3000\nVanilla HTML/JS served by Node.js"]
+        DASH_LABEL["Talks to Gateway to search\nlogs and display live stats"]
+    end
+
+    CLIENTS -- "POST /ingest/log" --> GW_BOX
+    GW_BOX -- "routes /ingest/**" --> INGEST_BOX
+    GW_BOX -- "routes /query/**" --> QUERY_BOX
+    INGEST_BOX -- "saves raw log\nJPA / PostgreSQL" --> DB_RAW
+    INGEST_BOX -- "async POST /query/index\nvia Gateway (@Async + WebClient)" --> QUERY_BOX
+    QUERY_BOX -- "saves indexed log\nJPA / PostgreSQL" --> DB_IDX
+    DASH_BOX -- "POST /query/search\nGET /query/stats" --> GW_BOX
+    INGEST_BOX -. "registers on startup" .-> EUREKA_BOX
+    QUERY_BOX  -. "registers on startup" .-> EUREKA_BOX
+    GW_BOX     -. "looks up service names\nto resolve routes" .-> EUREKA_BOX

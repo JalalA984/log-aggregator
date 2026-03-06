@@ -1,0 +1,26 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — Design Decision 1, plain-English explainer
+%% Contrasting a single monolithic app vs. independently deployed microservices
+
+flowchart LR
+    subgraph MONOLITH["MONOLITH\none big program, everything together"]
+        MONO["ingest + query +\ngateway + search\nall in one app\n\nScale the whole thing together\nDeploy the whole thing together\nOne failure can take everything down"]
+    end
+
+    subgraph MS["MICROSERVICES\nsmall independent programs that each do one thing"]
+        direction TB
+        INGEST_MS["INGEST\nSERVICE\n:8090"]
+        QUERY_MS["QUERY\nSERVICE\n:8091"]
+        GW_MS["API\nGATEWAY\n:8080"]
+        REGISTRY_MS["SERVICE\nREGISTRY\n:8761"]
+
+        INGEST_MS ~~~ QUERY_MS
+        GW_MS     ~~~ REGISTRY_MS
+    end
+
+    MONOLITH -- "vs" --> MS
+
+    NOTE_MONO["One chef does everything"]
+    NOTE_MS["Separate stations:\ngrill, prep, dessert —\neach can be staffed\nand scaled independently"]
+
+    MONOLITH -. "restaurant analogy" .-> NOTE_MONO
+    MS        -. "restaurant analogy" .-> NOTE_MS

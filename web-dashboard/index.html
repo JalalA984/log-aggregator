@@ -4,239 +4,465 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Log Aggregator Dashboard</title>
+    <title>Log Aggregator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
-            --bg: #fafafa;
+            --bg: #f4f5f7;
             --card: #ffffff;
-            --border: #eaeaea;
-
-            --info: #e8f1ff;
-            --error: #ffecec;
-            --warn: #fff4e5;
-            --debug: #f3f3f3;
-
-            --text-primary: #111;
-            --text-secondary: #555;
+            --border: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --accent: #4f46e5;
+            --accent-light: #eef2ff;
+            --info-bg: #eff6ff;
+            --info-text: #1d4ed8;
+            --info-border: #bfdbfe;
+            --warn-bg: #fffbeb;
+            --warn-text: #b45309;
+            --warn-border: #fde68a;
+            --error-bg: #fef2f2;
+            --error-text: #dc2626;
+            --error-border: #fecaca;
+            --debug-bg: #f3f4f6;
+            --debug-text: #4b5563;
+            --debug-border: #d1d5db;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.03);
+            --radius: 10px;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             background: var(--bg);
             color: var(--text-primary);
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .log-card {
+        /* ── Navbar ── */
+        .top-bar {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 0;
+        }
+        .top-bar .brand {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .top-bar .brand i {
+            color: var(--accent);
+            font-size: 1.1rem;
+        }
+        .top-bar .meta {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        /* ── Stat Cards ── */
+        .stat-card {
             background: var(--card);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: box-shadow 0.15s ease;
         }
-
-        .log-card:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+        .stat-card:hover { box-shadow: var(--shadow-md); }
+        .stat-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
         }
+        .stat-icon.info  { background: var(--info-bg);  color: var(--info-text); }
+        .stat-icon.warn  { background: var(--warn-bg);  color: var(--warn-text); }
+        .stat-icon.error { background: var(--error-bg); color: var(--error-text); }
+        .stat-icon.debug { background: var(--debug-bg); color: var(--debug-text); }
+        .stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+        .stat-label { font-size: 0.75rem; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
 
-        .log-info {
-            background: var(--info);
+        /* ── Search / Filters ── */
+        .search-section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            box-shadow: var(--shadow-sm);
         }
-
-        .log-error {
-            background: var(--error);
+        .search-bar {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px 14px;
+            font-size: 0.9rem;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.15s;
+            background: var(--bg);
         }
-
-        .log-warn {
-            background: var(--warn);
+        .search-bar:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.08);
         }
+        .search-bar::placeholder { color: var(--text-tertiary); }
+        .filter-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+        .filter-select {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            background: var(--bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            outline: none;
+        }
+        .filter-select:focus { border-color: var(--accent); }
 
-        .log-debug {
-            background: var(--debug);
+        /* ── Buttons ── */
+        .btn-accent {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 9px 18px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .btn-accent:hover { opacity: 0.9; color: #fff; }
+        .btn-ghost {
+            background: none;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px 14px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .btn-ghost:hover { background: var(--bg); border-color: var(--text-tertiary); color: var(--text-primary); }
+
+        /* ── Logs Table ── */
+        .logs-panel {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        .logs-header {
+            padding: 16px 22px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logs-header h6 {
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin: 0;
+            color: var(--text-primary);
+        }
+        .table {
+            margin: 0;
+            font-size: 0.85rem;
+        }
+        .table thead th {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-tertiary);
+            padding: 10px 16px;
+        }
+        .table tbody td {
+            padding: 12px 16px;
+            vertical-align: middle;
+            border-bottom: 1px solid #f3f4f6;
+            color: var(--text-primary);
+        }
+        .table tbody tr:last-child td { border-bottom: none; }
+        .table tbody tr:hover { background: #fafbfc; }
+
+        /* ── Level Badges ── */
+        .level-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+        .level-info  { background: var(--info-bg);  color: var(--info-text);  border: 1px solid var(--info-border); }
+        .level-warn  { background: var(--warn-bg);  color: var(--warn-text);  border: 1px solid var(--warn-border); }
+        .level-error { background: var(--error-bg); color: var(--error-text); border: 1px solid var(--error-border); }
+        .level-debug { background: var(--debug-bg); color: var(--debug-text); border: 1px solid var(--debug-border); }
+
+        .source-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--bg);
+            border: 1px solid var(--border);
+        }
+        .trace-id {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.72rem;
+            color: var(--text-tertiary);
         }
 
         .metadata-badge {
-            font-size: 0.7rem;
+            display: inline-block;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.68rem;
             font-weight: 500;
-            letter-spacing: 0.02em;
             color: var(--text-secondary);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            margin-right: 4px;
+            margin-top: 4px;
         }
 
+        .log-message { max-width: 380px; line-height: 1.4; }
+
         .highlight {
-            background: #fff2a8;
-            border-radius: 4px;
+            background: #fef08a;
+            border-radius: 3px;
             padding: 0 2px;
         }
 
-        #searchInput {
-            max-width: 360px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            padding: 8px 12px;
+        .load-more-section {
+            padding: 16px;
+            text-align: center;
+            border-top: 1px solid var(--border);
         }
 
-        .stat-card {
+        /* ── Empty State ── */
+        .empty-state {
+            padding: 48px 20px;
+            text-align: center;
+            color: var(--text-tertiary);
+        }
+        .empty-state i { font-size: 2rem; margin-bottom: 12px; display: block; }
+
+        /* ── Modal ── */
+        .modal-content {
+            border: none;
             border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+        }
+        .modal-header {
+            border-bottom: 1px solid var(--border);
+            padding: 18px 24px;
+        }
+        .modal-header .modal-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+        .modal-body { padding: 24px; }
+        .modal-body pre {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            overflow-x: auto;
+            margin: 0;
+        }
+
+        /* ── Toast ── */
+        .toast-container { z-index: 9999; }
+
+        /* ── View button ── */
+        .view-btn {
+            width: 30px; height: 30px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 7px;
             border: 1px solid var(--border);
             background: var(--card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 0.78rem;
         }
-
-        .toast-container {
-            z-index: 9999;
+        .view-btn:hover {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            color: var(--accent);
         }
     </style>
-
 </head>
 
 <body>
-    <nav class="navbar navbar-dark bg-dark mb-4">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-stream"></i> Log Aggregator Dashboard
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container d-flex align-items-center justify-content-between">
+            <a class="brand" href="#">
+                <i class="fas fa-stream"></i> Log Aggregator
             </a>
-            <div class="text-white">
-                <span id="lastUpdate">--:--:--</span>
-            </div>
+            <span class="meta" id="lastUpdate">--:--:--</span>
         </div>
-    </nav>
+    </div>
 
-    <div class="container">
-        <!-- Stats Cards -->
-        <div class="row mb-4" id="statsRow">
-            <div class="col-md-3">
-                <div class="card stat-card bg-primary text-white">
-                    <div class="card-body">
-                        <h5><i class="fas fa-info-circle"></i> INFO</h5>
-                        <h2 id="infoCount">0</h2>
+    <div class="container py-4">
+        <!-- Stats Row -->
+        <div class="row g-3 mb-4" id="statsRow">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon info"><i class="fas fa-info"></i></div>
+                    <div>
+                        <div class="stat-value" id="infoCount">0</div>
+                        <div class="stat-label">Info</div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card stat-card bg-warning text-white">
-                    <div class="card-body">
-                        <h5><i class="fas fa-exclamation-triangle"></i> WARN</h5>
-                        <h2 id="warnCount">0</h2>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon warn"><i class="fas fa-exclamation"></i></div>
+                    <div>
+                        <div class="stat-value" id="warnCount">0</div>
+                        <div class="stat-label">Warn</div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card stat-card bg-danger text-white">
-                    <div class="card-body">
-                        <h5><i class="fas fa-exclamation-circle"></i> ERROR</h5>
-                        <h2 id="errorCount">0</h2>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon error"><i class="fas fa-times"></i></div>
+                    <div>
+                        <div class="stat-value" id="errorCount">0</div>
+                        <div class="stat-label">Error</div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card stat-card bg-secondary text-white">
-                    <div class="card-body">
-                        <h5><i class="fas fa-bug"></i> DEBUG</h5>
-                        <h2 id="debugCount">0</h2>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Search & Controls -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-8">
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="searchInput" placeholder="Search logs..."
-                                onkeypress="if(event.key==='Enter') searchLogs()">
-                            <button class="btn btn-primary" onclick="searchLogs()">
-                                <i class="fas fa-search"></i> Search
-                            </button>
-                            <button class="btn btn-outline-secondary" onclick="clearSearch()">
-                                <i class="fas fa-times"></i> Clear
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="btn-group float-end">
-                            <button class="btn btn-outline-primary" onclick="loadAllLogs()">
-                                <i class="fas fa-sync"></i> Refresh All
-                            </button>
-                            <button class="btn btn-outline-info" onclick="refreshStats()">
-                                <i class="fas fa-chart-bar"></i> Refresh Stats
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-3 mb-2">
-                        <label class="form-label">Level</label>
-                        <select class="form-select" id="levelFilter">
-                            <option value="">All Levels</option>
-                            <option value="INFO">INFO</option>
-                            <option value="WARN">WARN</option>
-                            <option value="ERROR">ERROR</option>
-                            <option value="DEBUG">DEBUG</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <label class="form-label">Source</label>
-                        <select class="form-select" id="sourceFilter">
-                            <option value="">All Sources</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2 mb-2">
-                        <label class="form-label">Results</label>
-                        <input type="number" class="form-control" id="limitInput" value="20" min="1" max="100">
-                    </div>
-                    <div class="col-md-4 mb-2 d-flex align-items-end">
-                        <button class="btn btn-outline-success w-100" onclick="searchLogs()">
-                            <i class="fas fa-filter"></i> Apply Filters
-                        </button>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon debug"><i class="fas fa-bug"></i></div>
+                    <div>
+                        <div class="stat-value" id="debugCount">0</div>
+                        <div class="stat-label">Debug</div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Search & Filters -->
+        <div class="search-section mb-4">
+            <div class="d-flex gap-2 mb-3 flex-wrap">
+                <div class="flex-grow-1">
+                    <input type="text" class="search-bar" id="searchInput" placeholder="Search logs..."
+                        onkeypress="if(event.key==='Enter') searchLogs()">
+                </div>
+                <button class="btn-accent" onclick="searchLogs()">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <button class="btn-ghost" onclick="clearSearch()">Clear</button>
+                <button class="btn-ghost" onclick="loadAllLogs()"><i class="fas fa-arrows-rotate"></i></button>
+                <button class="btn-ghost" onclick="refreshStats()"><i class="fas fa-chart-bar"></i></button>
+            </div>
+            <div class="d-flex gap-3 flex-wrap align-items-end">
+                <div>
+                    <div class="filter-label">Level</div>
+                    <select class="filter-select" id="levelFilter">
+                        <option value="">All Levels</option>
+                        <option value="INFO">INFO</option>
+                        <option value="WARN">WARN</option>
+                        <option value="ERROR">ERROR</option>
+                        <option value="DEBUG">DEBUG</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="filter-label">Source</div>
+                    <select class="filter-select" id="sourceFilter">
+                        <option value="">All Sources</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="filter-label">Results</div>
+                    <input type="number" class="filter-select" id="limitInput" value="20" min="1" max="100"
+                        style="width: 80px;">
+                </div>
+                <button class="btn-ghost" onclick="searchLogs()">
+                    <i class="fas fa-filter"></i> Apply
+                </button>
+            </div>
+        </div>
+
         <!-- Logs Table -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-list"></i> Recent Logs</h5>
+        <div class="logs-panel">
+            <div class="logs-header">
+                <h6>Recent Logs</h6>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Level</th>
-                                <th>Source</th>
-                                <th>Message</th>
-                                <th>Trace ID</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="logsTableBody">
-                            <!-- Logs will be inserted here -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="text-center mt-3">
-                    <button class="btn btn-outline-primary" onclick="loadMoreLogs()">
-                        <i class="fas fa-plus"></i> Load More
-                    </button>
-                </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Level</th>
+                            <th>Source</th>
+                            <th>Message</th>
+                            <th>Trace ID</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div class="load-more-section">
+                <button class="btn-ghost" onclick="loadMoreLogs()">
+                    <i class="fas fa-plus"></i> Load More
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Modal for Log Details -->
     <div class="modal fade" id="logModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Log Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <pre id="logDetails" class="p-3 bg-light rounded"></pre>
+                    <pre id="logDetails"></pre>
                 </div>
             </div>
         </div>

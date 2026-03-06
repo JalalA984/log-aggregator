@@ -1,0 +1,37 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — Design Decision 5, [SHOW DIAGRAM: Gateway as Single Entry Point]
+%% How a single API Gateway simplifies clients and centralises cross-cutting concerns
+
+flowchart TB
+
+    subgraph WITHOUT_GW["WITHOUT a gateway — every client must know every address"]
+        direction LR
+        DASH_W["Dashboard\n:3000"]
+        SIM_W["Simulator\n:9001/:9002"]
+        APP_W["Your App"]
+
+        DASH_W -- "localhost:8090/ingest/log" --> SVC_INGEST_W["Log Ingest :8090"]
+        DASH_W -- "localhost:8091/query/search" --> SVC_QUERY_W["Log Query :8091"]
+        DASH_W -- "localhost:8091/query/stats" --> SVC_QUERY_W
+        SIM_W  -- "localhost:8090/ingest/log" --> SVC_INGEST_W
+        APP_W  -- "localhost:8090/ingest/log" --> SVC_INGEST_W
+
+        PROB_GW["Every client knows every service's address.\nAdd auth? Do it in every service separately.\nAdd rate limiting? Every service separately.\nServices change ports? Update every client."]
+    end
+
+    subgraph WITH_GW["WITH a gateway — everyone talks to localhost:8080"]
+        ALL_CLIENTS["Dashboard / Simulators / Any App\n(all point to localhost:8080)"]
+
+        subgraph GW_INTERNALS["API GATEWAY  :8080\nSpring Cloud Gateway — WebFlux / reactive / non-blocking"]
+            CC_CORS["✓ CORS — allows browser dashboard to talk to backend"]
+            CC_AUTH["✓ Auth — add once, protects all downstream services"]
+            CC_RATE["✓ Rate limiting — add once, applies everywhere"]
+            CC_LOG["✓ Request logging — single place for access logs"]
+            CC_CB["✓ Circuit breakers and retries — add once"]
+            ROUTE1["/ingest/**  ──────────────▶  LOG-INGEST-SERVICE"]
+            ROUTE2["/query/**   ──────────────▶  LOG-QUERY-SERVICE"]
+        end
+
+        ALL_CLIENTS --> GW_INTERNALS
+    end
+
+    WITHOUT_GW --> WITH_GW

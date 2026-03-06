@@ -125,11 +125,13 @@ function updateLoadMoreButton() {
         if (!hasMoreLogs) {
             button.disabled = true;
             button.innerHTML = '<i class="fas fa-check"></i> All logs loaded';
-            button.className = 'btn btn-success';
+            button.className = 'btn-ghost';
+            button.style.opacity = '0.5';
         } else {
             button.disabled = false;
             button.innerHTML = '<i class="fas fa-plus"></i> Load More';
-            button.className = 'btn btn-outline-primary';
+            button.className = 'btn-ghost';
+            button.style.opacity = '1';
         }
     }
 }
@@ -162,22 +164,22 @@ function displayLogs(logs) {
         }
         
         const row = document.createElement('tr');
-        row.className = `log-card log-${log.level.toLowerCase()}`;
+        row.className = '';
         
         const time = new Date(log.timestamp).toLocaleTimeString();
         const levelClass = getLevelClass(log.level);
         
         row.innerHTML = `
             <td>${time}</td>
-            <td><span class="badge ${levelClass}">${log.level}</span></td>
-            <td><span class="badge bg-secondary">${log.sourceApp}</span></td>
+            <td><span class="${levelClass}">${log.level}</span></td>
+            <td><span class="source-badge">${log.sourceApp}</span></td>
             <td>
                 <div class="log-message">${log.message}</div>
                 ${displayMetadata(log.metadata)}
             </td>
-            <td><small class="text-muted">${log.traceId || 'N/A'}</small></td>
+            <td><span class="trace-id">${log.traceId || 'N/A'}</span></td>
             <td>
-                <button class="btn btn-sm btn-outline-info" onclick="viewLogDetails('${log.logId}')">
+                <button class="view-btn" onclick="viewLogDetails('${log.logId}')">
                     <i class="fas fa-eye"></i>
                 </button>
             </td>
@@ -190,11 +192,11 @@ function displayLogs(logs) {
 // Get CSS class for log level
 function getLevelClass(level) {
     switch(level) {
-        case 'INFO': return 'bg-info';
-        case 'WARN': return 'bg-warning';
-        case 'ERROR': return 'bg-danger';
-        case 'DEBUG': return 'bg-secondary';
-        default: return 'bg-light text-dark';
+        case 'INFO': return 'level-badge level-info';
+        case 'WARN': return 'level-badge level-warn';
+        case 'ERROR': return 'level-badge level-error';
+        case 'DEBUG': return 'level-badge level-debug';
+        default: return 'level-badge level-debug';
     }
 }
 
@@ -204,7 +206,7 @@ function displayMetadata(metadata) {
     
     let badges = '';
     for (const [key, value] of Object.entries(metadata)) {
-        badges += `<span class="badge metadata-badge bg-dark me-1">${key}: ${value}</span>`;
+        badges += `<span class="metadata-badge">${key}: ${value}</span>`;
     }
     return `<div class="mt-1">${badges}</div>`;
 }

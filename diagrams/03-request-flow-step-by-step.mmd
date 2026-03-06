@@ -1,0 +1,43 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — Part 2, [SHOW DIAGRAM: Request Flow Step-by-Step]
+%% The five-step lifecycle of a single log entry from client to searchable index
+
+sequenceDiagram
+    participant CLI  as curl / simulator / your app
+    participant GW   as API Gateway :8080
+    participant IGS  as Log Ingest Service :8090
+    participant DRAW as raw_logs (log_aggregator DB)
+    participant BG   as Background Thread (Ingest @Async)
+    participant QS   as Log Query Service :8091
+    participant DIAW as indexed_logs (log_query_db)
+    participant DASH as Dashboard (browser)
+
+    Note over CLI,GW: STEP 1 — Client sends a log
+
+    CLI->>GW: POST http://localhost:8080/ingest/log<br/>{ "level": "ERROR", "message": "Payment failed", ... }
+
+    Note over GW,IGS: STEP 2 — API Gateway routes it
+
+    GW->>GW: sees /ingest/** → asks Eureka where LOG-INGEST-SERVICE is
+    GW->>IGS: forward request to :8090
+
+    Note over IGS,DRAW: STEP 3 — Ingest Service saves it, returns immediately
+
+    IGS->>IGS: validates log level, creates LogEntry object
+    IGS->>DRAW: saves to raw_logs table ✓ (durable — log never lost)
+    IGS-->>CLI: 200 OK  ← returns IMMEDIATELY without waiting for indexing
+    IGS-)BG: fires async background task (non-blocking)
+
+    Note over BG,DIAW: STEP 4 — Indexing happens in the background
+
+    BG->>GW: POST /query/index  (goes back through Gateway)
+    GW->>QS: routes to Log Query Service :8091
+    QS->>QS: builds searchable_text<br/>"payment-service error payment failed"<br/>(source_app + level + message, lowercased)
+    QS->>DIAW: saves to indexed_logs ✓
+
+    Note over DASH,DIAW: STEP 5 — Dashboard searches
+
+    DASH->>GW: POST /query/search  "find logs matching 'payment failed'"
+    GW->>QS: routes /query/** to Log Query Service
+    QS->>DIAW: SELECT * FROM indexed_logs<br/>WHERE searchable_text ILIKE '%payment failed%'<br/>ORDER BY timestamp DESC
+    DIAW-->>QS: matching rows (paginated)
+    QS-->>DASH: JSON response → dashboard renders results

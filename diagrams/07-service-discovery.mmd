@@ -1,0 +1,34 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — Design Decision 4, [SHOW DIAGRAM: Service Discovery]
+%% How Eureka removes hardcoded service addresses and enables dynamic load balancing
+
+flowchart TB
+
+    subgraph WITHOUT["WITHOUT service discovery — hardcoded URLs"]
+        CONFIG_HARD["API Gateway config:\n/ingest/**  →  http://localhost:8090   ← hardcoded!\n/query/**   →  http://localhost:8091   ← hardcoded!"]
+        PROB1["Problem 1: second ingest instance on port 8092?\nMust update config and restart the gateway."]
+        PROB2["Problem 2: services move to different machines?\nEvery hardcoded address breaks."]
+        PROB3["Problem 3: scaling means manual config changes.\nNo dynamic discovery, no automatic load balancing."]
+        CONFIG_HARD --> PROB1
+        CONFIG_HARD --> PROB2
+        CONFIG_HARD --> PROB3
+    end
+
+    subgraph WITH["WITH Eureka service discovery"]
+        subgraph EUREKA["EUREKA SERVER  :8761\nPhone book of running services"]
+            REGISTRY_DATA["LOG-INGEST-SERVICE  →  [localhost:8090, localhost:8092]  ← 2 instances!\nLOG-QUERY-SERVICE   →  [localhost:8091]"]
+        end
+
+        INGEST_1["Ingest Service\ninstance 1 :8090"]
+        INGEST_2["Ingest Service\ninstance 2 :8092"]
+        API_GW["API Gateway\n:8080"]
+
+        INGEST_1 -- "I'm here! (on startup)" --> EUREKA
+        INGEST_2 -- "I'm here! (on startup)" --> EUREKA
+        API_GW   -- "Where is LOG-INGEST-SERVICE?" --> EUREKA
+        EUREKA   -- "here are all instances\n(load balance across them)" --> API_GW
+
+        CONFIG_DYNAMIC["API Gateway config now says:\n/ingest/**  →  LOG-INGEST-SERVICE   ← just a name, no port\n/query/**   →  LOG-QUERY-SERVICE    ← just a name, no port\n\nspring-cloud-loadbalancer picks an instance automatically."]
+        API_GW --> CONFIG_DYNAMIC
+    end
+
+    WITHOUT --> WITH

@@ -1,0 +1,22 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — What I'd Still Add #4, Zipkin/Jaeger UI timeline view
+%% The waterfall timeline you would see in Zipkin for trace abc-123
+
+gantt
+    title Trace abc-123 — Zipkin / Jaeger waterfall view
+    dateFormat  x
+    axisFormat  %Lms
+
+    section API Gateway
+    Gateway (12ms total)          :active, gw,     0, 12
+
+    section Ingest Service
+    Ingest Service (8ms)          :active, ingest,  2, 10
+
+    section Ingest — DB Write
+    saves to raw_logs (3ms)       :active, dbraw,   3, 6
+
+    section Query Service async
+    Query Service (5ms)           :active, query,   7, 12
+
+    section Query — DB Write
+    saves to indexed_logs (2ms)   :active, dbidx,   8, 10

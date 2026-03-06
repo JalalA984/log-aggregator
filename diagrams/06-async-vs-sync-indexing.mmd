@@ -1,0 +1,28 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — Design Decision 3, [SHOW DIAGRAM: Async vs Sync Indexing]
+%% Why the ingest service fires indexing in a background thread instead of waiting
+
+flowchart TB
+
+    subgraph SYNC["OPTION A — Synchronous  (what I did NOT build)"]
+        direction LR
+        CS["Client"] -- "POST /ingest/log" --> IS["Ingest\nService"]
+        IS -- "saves raw" --> DS[("raw DB")]
+        IS -- "waits for..." --> QS_SYNC["Query Service\nindexes log"]
+        QS_SYNC -- "waits for..." --> DI_SYNC[("indexed DB")]
+        DI_SYNC -- "done" --> QS_SYNC
+        QS_SYNC -- "done" --> IS
+        IS -- "200 OK\n(only after ALL of this)" --> CS
+        SYNC_PROB["Problem: client waits for the full chain.\nIf Query Service is slow or down,\nthe app sending logs gets slow too.\nWrite path latency = ingest time + indexing time."]
+    end
+
+    subgraph ASYNC["OPTION B — Asynchronous  (what I built)"]
+        direction LR
+        CA["Client"] -- "POST /ingest/log" --> IA["Ingest\nService"]
+        IA -- "saves raw" --> DA[("raw DB")]
+        IA -- "200 OK ← IMMEDIATELY\n(does not wait for indexing)" --> CA
+        IA -. "@Async background thread\n(non-blocking WebClient)" .-> QS_ASYNC["Query Service\nindexes log"]
+        QS_ASYNC -- "indexes" --> DI_ASYNC[("indexed DB")]
+        ASYNC_BENEFIT["Client does not wait.\nWrite path is fully decoupled from read path.\nIngest latency = DB write only.\nIndexing failure does not affect the caller."]
+    end
+
+    SYNC --> ASYNC

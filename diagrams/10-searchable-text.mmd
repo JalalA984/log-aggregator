@@ -1,0 +1,37 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — Design Decision 7, [SHOW DIAGRAM: How searchable_text works]
+%% How a preprocessed column enables ILIKE search, and the tradeoff vs PostgreSQL full-text search
+
+flowchart TB
+
+    subgraph BUILD["Building searchable_text at index time"]
+        INPUT["Input log received by Query Service\n──────────────────────────────────────\nsource_app : payment-service\nlevel       : ERROR\nmessage     : Payment failed for userId=42: timeout"]
+
+        CONCAT["concatenate all fields + lowercase everything"]
+
+        SEARCHABLE["searchable_text (stored in indexed_logs)\n──────────────────────────────────────────────────────\npayment-service error payment failed for userid=42: timeout"]
+
+        INPUT --> CONCAT --> SEARCHABLE
+    end
+
+    subgraph SEARCH["Searching at query time"]
+        USER_QUERY["User searches: 'payment failed'"]
+
+        SQL_QUERY["SELECT * FROM indexed_logs\nWHERE searchable_text ILIKE '%payment failed%'\nORDER BY timestamp DESC\nLIMIT 20 OFFSET 0"]
+
+        RESULT["Matching rows returned ✓\n(case-insensitive substring match)"]
+
+        USER_QUERY --> SQL_QUERY --> RESULT
+    end
+
+    subgraph COMPARISON["WHY NOT PostgreSQL full-text search — tsvector / tsquery?"]
+        direction LR
+
+        FTS["PostgreSQL full-text search\n─────────────────────────────\n+ Ranking with TF-IDF scoring\n+ Stemming (run = runs = ran)\n+ Boolean operators AND / OR / NOT\n+ GIN index — very fast at millions of rows\n+ Language-aware tokenisation\n\n— More complex to build and tune\n— Harder to debug unexpected results"]
+
+        ILIKE_OPT["ILIKE search  (what I built)\n─────────────────────────────\n+ Dead simple to implement\n+ Easy to understand and debug\n+ Fast enough for local dev scale\n+ No extra index type needed\n\n— Slower at millions of rows\n  (sequential scan without GIN)\n— No ranking or stemming\n— Case-folded but not language-aware"]
+
+        FTS -- "vs" --> ILIKE_OPT
+    end
+
+    BUILD  --> SEARCH
+    SEARCH --> COMPARISON

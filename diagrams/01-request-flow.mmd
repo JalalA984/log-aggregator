@@ -1,0 +1,19 @@
+%% Source: CLAUDE.md — Architecture > Request Flow
+%% The end-to-end path for both ingest and query traffic
+
+flowchart LR
+    SIM["Simulators / Clients"]
+    GW["API Gateway\n:8080"]
+    INGEST["log-ingest-service\n:8090"]
+    DB_RAW[("PostgreSQL\nlog_aggregator DB\nraw_logs table")]
+    QUERY["log-query-service\n:8091"]
+    DB_IDX[("PostgreSQL\nlog_query_db\nindexed_logs table")]
+    DASH["web-dashboard\n:3000"]
+
+    SIM -- "POST /ingest/log" --> GW
+    GW -- "/ingest/** route" --> INGEST
+    INGEST -- "saves raw log" --> DB_RAW
+    INGEST -- "async WebClient POST\nvia Gateway" --> QUERY
+    QUERY -- "indexes log" --> DB_IDX
+    DASH -- "POST /query/search\nGET /query/stats" --> GW
+    GW -- "/query/** route" --> QUERY

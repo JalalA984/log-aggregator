@@ -1,0 +1,18 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — Design Decision 6, plain-English explainer for JSONB
+%% Fixed rigid schema vs flexible JSONB metadata column
+
+flowchart LR
+
+    subgraph FIXED["Fixed schema — rigid columns"]
+        direction TB
+        FIXED_TABLE["userId  | amount\n────────┼────────\n42      | 19.99\nnull    | null\n\nDesigned for payment logs only.\nAll other log types must use null\nor require schema migrations.\nAdding a new field = ALTER TABLE."]
+    end
+
+    subgraph JSONB_COL["JSONB metadata column — flexible, schema-less"]
+        direction TB
+        JSONB_TABLE["metadata  (PostgreSQL JSONB binary column)\n──────────────────────────────────────────────\n{\"userId\":\"42\", \"amount\":\"19.99\", \"processingTimeMs\":\"45\"}\n{\"env\":\"dev\", \"region\":\"us-east-1\"}\n{\"userId\":\"7\", \"sessionId\":\"abc123\", \"userAgent\":\"Firefox\"}\n\nAny log can store any extra fields.\nNo schema changes needed.\nDifferent apps send different metadata.\nPostgreSQL can still index and query inside JSONB."]
+        IMPL_NOTE["Implementation:\nJava Map<String, String> metadata\nmapped to JSONB via hypersistence-utils-hibernate-60\n(Vlad Mihalcea's library)\nHibernate handles serialisation automatically."]
+        JSONB_TABLE --> IMPL_NOTE
+    end
+
+    FIXED -- "vs" --> JSONB_COL

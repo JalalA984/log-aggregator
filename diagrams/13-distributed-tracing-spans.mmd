@@ -1,0 +1,28 @@
+%% Source: VIDEO_WALKTHROUGH_SCRIPT.md — What I'd Still Add #4, [SHOW DIAGRAM: Trace Spans Across Services]
+%% One request generates nested spans across all services, all linked by a single traceId
+
+%% ── Part 1: Span tree (how one request fans out across services) ──────────────
+
+flowchart TB
+
+    subgraph TREE["Span tree — one request touches multiple services"]
+        direction TB
+        GW_SPAN["API Gateway\ntraceId: abc-123\n────────────────────────────\nspan: 0 ms → 12 ms  (12 ms total)\nreceived request, forwarded to Ingest"]
+
+        IGS_SPAN["Ingest Service\ntraceId: abc-123  parentSpan: gateway\n────────────────────────────────────\nspan: 2 ms → 10 ms  (8 ms)\nvalidated log, saved to DB, fired async indexing"]
+
+        DB_WRITE_SPAN["Ingest — DB write\ntraceId: abc-123  parentSpan: ingest\n──────────────────────────────────────\nspan: 3 ms → 6 ms  (3 ms)\nINSERT into raw_logs"]
+
+        QS_SPAN["Query Service  (async)\ntraceId: abc-123  parentSpan: ingest\n────────────────────────────────────\nspan: 7 ms → 12 ms  (5 ms)\nbuilt searchable_text, saved indexed log"]
+
+        DB_IDX_SPAN["Query — DB write\ntraceId: abc-123  parentSpan: query\n────────────────────────────────────\nspan: 8 ms → 10 ms  (2 ms)\nINSERT into indexed_logs"]
+
+        GW_SPAN      --> IGS_SPAN
+        IGS_SPAN     --> DB_WRITE_SPAN
+        IGS_SPAN     -. "async" .-> QS_SPAN
+        QS_SPAN      --> DB_IDX_SPAN
+    end
+
+    TRACE_NOTE["All spans linked by traceId: abc-123\nAlready have traceId in the log model — intentional.\nNext step: integrate Micrometer Tracing + Zipkin/Jaeger\nto capture and visualise these spans automatically."]
+
+    TREE --> TRACE_NOTE
