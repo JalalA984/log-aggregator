@@ -28,7 +28,7 @@ public class LogIndexingService {
                 return indexedLogRepository.findById(indexRequest.getId()).orElse(null);
             }
 
-            // Create indexed log
+            // Create indexed log (with custom searchable values if present)
             IndexedLog indexedLog = new IndexedLog(
                     indexRequest.getId(),
                     indexRequest.getSourceApp(),
@@ -36,7 +36,8 @@ public class LogIndexingService {
                     indexRequest.getMessage(),
                     indexRequest.getTraceId(),
                     indexRequest.getTimestamp(),
-                    indexRequest.getMetadata()
+                    indexRequest.getMetadata(),
+                    indexRequest.getSearchableCustomValues()
             );
 
             // Save to database

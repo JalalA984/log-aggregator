@@ -13,6 +13,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -30,6 +31,12 @@ public class LogIndexingService {
     @Async
     @Transactional
     public void triggerIndexingAsync(LogEntry logEntry) {
+        triggerIndexingAsync(logEntry, null);
+    }
+
+    @Async
+    @Transactional
+    public void triggerIndexingAsync(LogEntry logEntry, List<String> searchableCustomValues) {
         Long logId = logEntry.getId();
 
         try {
@@ -44,6 +51,10 @@ public class LogIndexingService {
             indexRequest.put("timestamp", logEntry.getTimestamp().toString());
             indexRequest.put("traceId", logEntry.getTraceId());
             indexRequest.put("metadata", logEntry.getMetadata());
+
+            if (searchableCustomValues != null && !searchableCustomValues.isEmpty()) {
+                indexRequest.put("searchableCustomValues", searchableCustomValues);
+            }
 
             // Use the WebClient builder (non-load-balanced)
             webClientBuilder.build()

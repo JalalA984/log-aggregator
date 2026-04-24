@@ -7,6 +7,7 @@ import org.hibernate.annotations.Type;
 import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Entity
@@ -49,6 +50,12 @@ public class IndexedLog {
 
     public IndexedLog(String logId, String sourceApp, String level, String message,
                       String traceId, LocalDateTime timestamp, Map<String, String> metadata) {
+        this(logId, sourceApp, level, message, traceId, timestamp, metadata, null);
+    }
+
+    public IndexedLog(String logId, String sourceApp, String level, String message,
+                      String traceId, LocalDateTime timestamp, Map<String, String> metadata,
+                      List<String> searchableCustomValues) {
         this.logId = logId;
         this.sourceApp = sourceApp;
         this.level = level;
@@ -56,13 +63,24 @@ public class IndexedLog {
         this.traceId = traceId;
         this.timestamp = timestamp;
         this.metadata = metadata != null ? metadata : new HashMap<>();
-        this.searchableText = preprocessForSearch(message, sourceApp, level);
+        this.searchableText = preprocessForSearch(message, sourceApp, level, searchableCustomValues);
     }
 
     // Helper method to create searchable text
     private String preprocessForSearch(String message, String sourceApp, String level) {
-        // Convert to lowercase and combine fields for full-text search
-        return (sourceApp + " " + level + " " + message).toLowerCase();
+        return preprocessForSearch(message, sourceApp, level, null);
+    }
+
+    private String preprocessForSearch(String message, String sourceApp, String level,
+                                        List<String> customValues) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(sourceApp).append(" ").append(level).append(" ").append(message);
+        if (customValues != null) {
+            for (String val : customValues) {
+                sb.append(" ").append(val);
+            }
+        }
+        return sb.toString().toLowerCase();
     }
 
     // Getters and Setters

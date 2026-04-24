@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Schemas - Log Aggregator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #f4f5f7;
+            --card: #ffffff;
+            --border: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --accent: #4f46e5;
+            --accent-light: #eef2ff;
+            --info-bg: #eff6ff;
+            --info-text: #1d4ed8;
+            --info-border: #bfdbfe;
+            --warn-bg: #fffbeb;
+            --warn-text: #b45309;
+            --warn-border: #fde68a;
+            --error-bg: #fef2f2;
+            --error-text: #dc2626;
+            --error-border: #fecaca;
+            --debug-bg: #f3f4f6;
+            --debug-text: #4b5563;
+            --debug-border: #d1d5db;
+            --success-bg: #f0fdf4;
+            --success-text: #15803d;
+            --success-border: #bbf7d0;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.03);
+            --radius: 10px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .top-bar {
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 0;
+        }
+        .top-bar .brand {
+            font-weight: 700; font-size: 1.05rem; color: var(--text-primary);
+            text-decoration: none; letter-spacing: -0.01em;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .top-bar .brand i { color: var(--accent); font-size: 1.1rem; }
+        .nav-link-active {
+            font-size: 0.85rem; color: var(--accent) !important;
+            text-decoration: none; font-weight: 600;
+        }
+
+        .btn-accent {
+            background: var(--accent); color: #fff; border: none;
+            border-radius: 8px; padding: 9px 18px; font-size: 0.85rem;
+            font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+        }
+        .btn-accent:hover { opacity: 0.9; color: #fff; }
+        .btn-ghost {
+            background: none; color: var(--text-secondary); border: 1px solid var(--border);
+            border-radius: 8px; padding: 9px 14px; font-size: 0.85rem;
+            font-weight: 500; cursor: pointer; transition: background 0.15s;
+        }
+        .btn-ghost:hover { background: var(--bg); border-color: var(--text-tertiary); color: var(--text-primary); }
+        .btn-danger-ghost {
+            background: none; color: var(--error-text); border: 1px solid var(--error-border);
+            border-radius: 8px; padding: 6px 12px; font-size: 0.8rem;
+            font-weight: 500; cursor: pointer;
+        }
+        .btn-danger-ghost:hover { background: var(--error-bg); }
+
+        .panel {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden;
+        }
+        .panel-header {
+            padding: 16px 22px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .panel-header h6 { font-weight: 700; font-size: 0.9rem; margin: 0; }
+
+        .schema-row {
+            padding: 14px 22px; border-bottom: 1px solid #f3f4f6;
+            display: flex; align-items: center; justify-content: space-between;
+            transition: background 0.1s;
+        }
+        .schema-row:last-child { border-bottom: none; }
+        .schema-row:hover { background: #fafbfc; }
+        .schema-name { font-weight: 600; font-size: 0.9rem; }
+        .schema-desc { font-size: 0.8rem; color: var(--text-tertiary); margin-top: 2px; }
+        .schema-meta { font-size: 0.72rem; color: var(--text-tertiary); }
+
+        .field-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 5px;
+            font-size: 0.72rem; font-weight: 600; margin-right: 4px; margin-bottom: 4px;
+        }
+        .field-badge.mapped { background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-border); }
+        .field-badge.searchable { background: var(--success-bg); color: var(--success-text); border: 1px solid var(--success-border); }
+        .field-badge.custom { background: var(--debug-bg); color: var(--debug-text); border: 1px solid var(--debug-border); }
+
+        .empty-state {
+            padding: 48px 20px; text-align: center; color: var(--text-tertiary);
+        }
+        .empty-state i { font-size: 2rem; margin-bottom: 12px; display: block; }
+
+        /* Wizard steps */
+        .wizard-step { display: none; }
+        .wizard-step.active { display: block; }
+        .step-indicator {
+            display: flex; gap: 8px; margin-bottom: 20px;
+        }
+        .step-dot {
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem; font-weight: 700;
+            background: var(--bg); color: var(--text-tertiary); border: 2px solid var(--border);
+        }
+        .step-dot.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .step-dot.done { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+
+        .sample-textarea {
+            width: 100%; min-height: 140px; border: 1px solid var(--border);
+            border-radius: 8px; padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.82rem; background: var(--bg); resize: vertical; outline: none;
+        }
+        .sample-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,70,229,0.08); }
+
+        .field-table { width: 100%; font-size: 0.85rem; }
+        .field-table th {
+            font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.05em; color: var(--text-tertiary); padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .field-table td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+        .field-table select, .field-table input[type="text"] {
+            border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px;
+            font-size: 0.82rem; background: var(--bg); outline: none; width: 100%;
+        }
+        .field-table select:focus, .field-table input[type="text"]:focus { border-color: var(--accent); }
+
+        .pipe-command {
+            background: #1e1e2e; color: #cdd6f4; border-radius: 8px;
+            padding: 14px 18px; font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.82rem; position: relative; margin-top: 12px;
+        }
+        .pipe-command .copy-btn {
+            position: absolute; top: 8px; right: 8px;
+            background: rgba(255,255,255,0.1); border: none; color: #cdd6f4;
+            border-radius: 5px; padding: 4px 8px; cursor: pointer; font-size: 0.72rem;
+        }
+        .pipe-command .copy-btn:hover { background: rgba(255,255,255,0.2); }
+
+        .modal-content {
+            border: none; border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+        }
+        .modal-header { border-bottom: 1px solid var(--border); padding: 18px 24px; }
+        .modal-header .modal-title { font-size: 0.95rem; font-weight: 700; }
+        .modal-body { padding: 24px; }
+        .modal-footer { border-top: 1px solid var(--border); padding: 14px 24px; }
+
+        .toast-container { z-index: 9999; }
+    </style>
+</head>
+
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-3">
+                <a class="brand" href="index.html">
+                    <i class="fas fa-stream"></i> Log Aggregator
+                </a>
+                <a href="schema.html" class="nav-link-active">Schemas</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container py-4">
+        <!-- Schema List -->
+        <div class="panel mb-4">
+            <div class="panel-header">
+                <h6><i class="fas fa-project-diagram" style="color:var(--accent); margin-right:8px;"></i>Log Schemas</h6>
+                <button class="btn-accent" onclick="openWizard()">
+                    <i class="fas fa-plus"></i> New Schema
+                </button>
+            </div>
+            <div id="schemaList">
+                <div class="empty-state">
+                    <i class="fas fa-layer-group"></i>
+                    <p>No schemas defined yet</p>
+                    <small>Create a schema to start ingesting custom log formats</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schema Wizard Modal -->
+    <div class="modal fade" id="wizardModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Log Schema</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Step indicators -->
+                    <div class="step-indicator">
+                        <div class="step-dot active" id="stepDot1">1</div>
+                        <div class="step-dot" id="stepDot2">2</div>
+                        <div class="step-dot" id="stepDot3">3</div>
+                        <div class="step-dot" id="stepDot4">4</div>
+                    </div>
+
+                    <!-- Step 1: Paste Sample -->
+                    <div class="wizard-step active" id="step1">
+                        <h6 style="font-weight:700; margin-bottom:4px;">Paste a Sample Log</h6>
+                        <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">
+                            Paste a single JSON log line from your application. We'll detect the fields automatically.
+                        </p>
+                        <textarea class="sample-textarea" id="sampleLogInput" placeholder='{"timestamp":"2024-01-15T10:30:00Z","level":"info","msg":"Request completed","userId":"u123","duration":450}'></textarea>
+                        <div id="inferError" style="color:var(--error-text); font-size:0.82rem; margin-top:8px; display:none;"></div>
+                    </div>
+
+                    <!-- Step 2: Map Core Fields -->
+                    <div class="wizard-step" id="step2">
+                        <h6 style="font-weight:700; margin-bottom:4px;">Map Core Fields</h6>
+                        <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">
+                            Tell us which of your fields correspond to the core log fields. We've made our best guesses.
+                        </p>
+                        <table class="field-table">
+                            <thead>
+                                <tr>
+                                    <th>Core Field</th>
+                                    <th>Your Field</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Message</strong> <span style="color:var(--error-text);">*</span><br><small style="color:var(--text-tertiary)">The log message text</small></td>
+                                    <td><select id="mapMessage"></select></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Level</strong><br><small style="color:var(--text-tertiary)">Severity (info, error, etc.)</small></td>
+                                    <td><select id="mapLevel"></select></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Timestamp</strong><br><small style="color:var(--text-tertiary)">When the log was created</small></td>
+                                    <td><select id="mapTimestamp"></select></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Trace ID</strong><br><small style="color:var(--text-tertiary)">Request/correlation ID</small></td>
+                                    <td><select id="mapTraceId"></select></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Source App</strong><br><small style="color:var(--text-tertiary)">Name for this application</small></td>
+                                    <td><input type="text" id="mapSourceApp" placeholder="e.g., my-express-app"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Step 3: Mark Searchable -->
+                    <div class="wizard-step" id="step3">
+                        <h6 style="font-weight:700; margin-bottom:4px;">Custom Fields</h6>
+                        <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">
+                            These are the remaining fields from your log. Check the ones you'd like to be searchable.
+                        </p>
+                        <table class="field-table">
+                            <thead>
+                                <tr>
+                                    <th>Field</th>
+                                    <th>Type</th>
+                                    <th>Sample Value</th>
+                                    <th>Searchable</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customFieldsBody">
+                            </tbody>
+                        </table>
+                        <div id="noCustomFields" style="text-align:center; color:var(--text-tertiary); padding:20px; display:none;">
+                            All fields are mapped to core fields. No custom fields to configure.
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Name & Save -->
+                    <div class="wizard-step" id="step4">
+                        <h6 style="font-weight:700; margin-bottom:4px;">Name Your Schema</h6>
+                        <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:12px;">
+                            Give your schema a short, URL-friendly name. You'll use this name when piping logs.
+                        </p>
+                        <div class="mb-3">
+                            <label style="font-size:0.75rem; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.04em;">Schema Name</label>
+                            <input type="text" id="schemaName" class="sample-textarea" style="min-height:auto; padding:9px 14px; font-family:inherit;"
+                                placeholder="e.g., express-logs">
+                        </div>
+                        <div class="mb-3">
+                            <label style="font-size:0.75rem; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.04em;">Description (optional)</label>
+                            <input type="text" id="schemaDescription" class="sample-textarea" style="min-height:auto; padding:9px 14px; font-family:inherit;"
+                                placeholder="e.g., Logs from my Express.js API">
+                        </div>
+                        <div id="saveError" style="color:var(--error-text); font-size:0.82rem; margin-top:8px; display:none;"></div>
+                        <div id="saveSuccess" style="display:none;">
+                            <div style="background:var(--success-bg); border:1px solid var(--success-border); border-radius:8px; padding:14px 18px; margin-top:12px;">
+                                <div style="color:var(--success-text); font-weight:600; font-size:0.85rem; margin-bottom:8px;">
+                                    <i class="fas fa-check-circle"></i> Schema saved!
+                                </div>
+                                <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:8px;">
+                                    Pipe your application logs using this command:
+                                </p>
+                                <div class="pipe-command">
+                                    <code id="pipeCommandText"></code>
+                                    <button class="copy-btn" onclick="copyPipeCommand()"><i class="fas fa-copy"></i> Copy</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button class="btn-ghost" id="wizardPrev" onclick="wizardPrev()" style="display:none;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div></div>
+                    <button class="btn-accent" id="wizardNext" onclick="wizardNext()">
+                        Analyze <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="schema.js"></script>
+</body>
+
+</html>

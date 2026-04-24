@@ -3,6 +3,7 @@ package app.vercel.jalalahmad.log_query_service.model;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -14,6 +15,7 @@ public class IndexRequestDTO {
     private String traceId;
     private LocalDateTime timestamp;
     private Map<String, String> metadata = new HashMap<>();
+    private List<String> searchableCustomValues;
 
     // Constructors
     public IndexRequestDTO() {}
@@ -52,4 +54,7 @@ public class IndexRequestDTO {
     public void setMetadata(Map<String, String> metadata) {
         this.metadata = metadata != null ? metadata : new HashMap<>();
     }
+
+    public List<String> getSearchableCustomValues() { return searchableCustomValues; }
+    public void setSearchableCustomValues(List<String> searchableCustomValues) { this.searchableCustomValues = searchableCustomValues; }
 }
